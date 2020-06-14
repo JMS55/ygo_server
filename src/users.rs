@@ -142,7 +142,6 @@ pub fn delete(db: Database, request: Json<DeleteRequest>) -> JsonValue {
     if authenticate_user_succeeded(&request.username, &request.password, &db) {
         diesel::delete(users::table)
             .filter(users::username.eq(&request.username))
-            .filter(users::password.eq(&request.password))
             .execute(&*db)
             .unwrap();
         json!({
