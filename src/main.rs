@@ -22,16 +22,18 @@ pub struct Database(SqliteConnection);
 pub struct AdminKey(String);
 
 fn main() {
-    let mut c = Command::new("sqlite3")
-        .arg("ygo_server.sqlite3")
-        .stdin(Stdio::piped())
-        .spawn()
-        .unwrap();
-    c.stdin
-        .as_mut()
-        .unwrap()
-        .write_all(include_bytes!("../setup_db.sql"))
-        .unwrap();
+    {
+        let mut c = Command::new("sqlite3")
+            .arg("ygo_server.sqlite3")
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+        c.stdin
+            .as_mut()
+            .unwrap()
+            .write_all(include_bytes!("../setup_db.sql"))
+            .unwrap();
+    }
 
     if let Ok(admin_key) = env::var("ADMIN_KEY") {
         rocket::ignite()
