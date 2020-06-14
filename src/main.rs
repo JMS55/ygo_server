@@ -37,7 +37,10 @@ fn main() {
         rocket::ignite()
             .attach(Database::fairing())
             .manage(AdminKey(admin_key))
-            .mount("/users", routes![users::list, users::add, users::delete])
+            .mount(
+                "/users",
+                routes![users::list, users::view, users::add, users::delete],
+            )
             .launch();
     } else {
         println!("Error: ADMIN_KEY environment variable not set.");
