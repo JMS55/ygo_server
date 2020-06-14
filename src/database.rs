@@ -29,5 +29,5 @@ pub fn authenticate_user_succeeded(username: &str, password: &str, db: &Database
         .unwrap();
     users
         .iter()
-        .any(|user| user.username == username && scrypt_check(password, &user.password).is_ok())
+        .any(|user| scrypt_check(password, &user.password).is_ok())
 }
