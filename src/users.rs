@@ -1,4 +1,4 @@
-use crate::database::{authenticate_user_succeeded, users, User, DB_FALSE, DB_TRUE};
+use crate::database::{authenticate_user_succeeded, users, User};
 use crate::{AdminKey, Database};
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use rocket::{get, post, State};
@@ -15,7 +15,7 @@ pub fn list(db: Database) -> JsonValue {
         .map(|user| {
             json!({
                 "username": user.username,
-                "is_admin": user.is_admin == DB_TRUE,
+                "is_admin": user.is_admin,
             })
         })
         .collect::<Vec<JsonValue>>();
@@ -43,13 +43,13 @@ pub fn view(db: Database, request: Json<ViewRequest>) -> JsonValue {
             if request.username_to_view == request.username {
                 json!({
                     "r.type": "response",
-                    "is_admin": user.is_admin == DB_TRUE,
+                    "is_admin": user.is_admin,
                     "duel_points": user.duel_points,
                 })
             } else {
                 json!({
                     "r.type": "response",
-                    "is_admin": user.is_admin == DB_TRUE,
+                    "is_admin": user.is_admin,
                 })
             }
         } else {
@@ -95,7 +95,7 @@ pub fn add(db: Database, state_admin_key: State<AdminKey>, request: Json<AddRequ
                     .values(&User {
                         username,
                         password,
-                        is_admin: DB_TRUE,
+                        is_admin: true,
                         duel_points: 0,
                     })
                     .execute(&*db)
@@ -114,7 +114,7 @@ pub fn add(db: Database, state_admin_key: State<AdminKey>, request: Json<AddRequ
                 .values(&User {
                     username,
                     password,
-                    is_admin: DB_FALSE,
+                    is_admin: false,
                     duel_points: 0,
                 })
                 .execute(&*db)

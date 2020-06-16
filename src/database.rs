@@ -2,14 +2,11 @@ use crate::Database;
 use diesel::{ExpressionMethods, Insertable, QueryDsl, Queryable, RunQueryDsl};
 use scrypt::scrypt_check;
 
-pub const DB_FALSE: i32 = 0;
-pub const DB_TRUE: i32 = 1;
-
 table! {
     users (username) {
         username -> Text,
         password -> Text,
-        is_admin -> Integer,
+        is_admin -> Bool,
         duel_points -> Integer,
     }
 }
@@ -18,7 +15,7 @@ table! {
 pub struct User {
     pub username: String,
     pub password: String,
-    pub is_admin: i32,
+    pub is_admin: bool,
     pub duel_points: i32,
 }
 
