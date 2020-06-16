@@ -9,12 +9,10 @@ mod shop;
 mod tournaments;
 mod users;
 
-use diesel::SqliteConnection;
+use diesel::{sql_query, RunQueryDsl, SqliteConnection};
 use rocket::routes;
 use rocket_contrib::database;
 use std::env;
-use std::io::Write;
-use std::process::{Command, Stdio};
 
 #[database("database")]
 pub struct Database(SqliteConnection);
@@ -22,28 +20,19 @@ pub struct Database(SqliteConnection);
 pub struct AdminKey(String);
 
 fn main() {
-    {
-        let mut c = Command::new("sqlite3")
-            .arg("ygo_server.sqlite3")
-            .stdin(Stdio::piped())
-            .spawn()
-            .unwrap();
-        c.stdin
-            .as_mut()
-            .unwrap()
-            .write_all(include_bytes!("../setup_db.sql"))
-            .unwrap();
-    }
-
     if let Ok(admin_key) = env::var("ADMIN_KEY") {
-        rocket::ignite()
+        let rocket = rocket::ignite()
             .attach(Database::fairing())
             .manage(AdminKey(admin_key))
             .mount(
                 "/users",
                 routes![users::list, users::view, users::add, users::delete],
-            )
-            .launch();
+            );
+        let db = Database::get_one(&rocket).unwrap();
+        sql_query(include_str!("../setup_db.sql"))
+            .execute(&*db)
+            .unwrap();
+        rocket.launch();
     } else {
         println!("Error: ADMIN_KEY environment variable not set.");
     }
