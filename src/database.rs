@@ -1,9 +1,10 @@
 use crate::Database;
-use diesel::{ExpressionMethods, Insertable, QueryDsl, Queryable, RunQueryDsl};
+use diesel::{ExpressionMethods, QueryDsl, Queryable, RunQueryDsl};
 use scrypt::scrypt_check;
 
 table! {
-    users (username) {
+    users (id) {
+        id -> Integer,
         username -> Text,
         password -> Text,
         is_admin -> Bool,
@@ -11,8 +12,9 @@ table! {
     }
 }
 
-#[derive(Queryable, Insertable)]
+#[derive(Queryable)]
 pub struct User {
+    pub id: i32,
     pub username: String,
     pub password: String,
     pub is_admin: bool,

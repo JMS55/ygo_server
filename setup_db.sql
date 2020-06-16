@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
-    username TEXT PRIMARY KEY NOT NULL,
+    id INTEGER NOT NULL PRIMARY KEY,
+    username TEXT NOT NULL,
     password TEXT NOT NULL,
-    is_admin INTEGER NOT NULL,
-    duel_points BOOLEAN NOT NULL
+    is_admin BOOLEAN NOT NULL,
+    duel_points INTEGER NOT NULL
 );

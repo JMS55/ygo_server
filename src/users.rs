@@ -1,4 +1,4 @@
-use crate::database::{authenticate_user_succeeded, users, User};
+use crate::database::{authenticate_user_succeeded, users as users_db, User};
 use crate::{AdminKey, Database};
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use rocket::{get, post, State};
@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 #[get("/list")]
 pub fn list(db: Database) -> JsonValue {
-    let users = users::table.load::<User>(&*db).unwrap();
+    let users = users_db::table.load::<User>(&*db).unwrap();
     let user_list = users
         .into_iter()
         .map(|user| {
@@ -35,8 +35,8 @@ pub struct ViewRequest {
 #[post("/view", data = "<request>")]
 pub fn view(db: Database, request: Json<ViewRequest>) -> JsonValue {
     if authenticate_user_succeeded(&request.username, &request.password, &db) {
-        let user = users::table
-            .filter(users::username.eq(&request.username_to_view))
+        let user = users_db::table
+            .filter(users_db::username.eq(&request.username_to_view))
             .load::<User>(&*db)
             .unwrap();
         if let Some(user) = user.get(0) {
@@ -82,8 +82,8 @@ pub fn add(db: Database, state_admin_key: State<AdminKey>, request: Json<AddRequ
         ..
     } = request.into_inner();
 
-    let username_not_taken = users::table
-        .filter(users::username.eq(&username))
+    let username_not_taken = users_db::table
+        .filter(users_db::username.eq(&username))
         .load::<User>(&*db)
         .unwrap()
         .is_empty();
@@ -91,13 +91,13 @@ pub fn add(db: Database, state_admin_key: State<AdminKey>, request: Json<AddRequ
         password = scrypt_simple(&password, &ScryptParams::recommended()).unwrap();
         if let Some(admin_key) = admin_key {
             if admin_key == state_admin_key.0 {
-                diesel::insert_into(users::table)
-                    .values(&User {
-                        username,
-                        password,
-                        is_admin: true,
-                        duel_points: 0,
-                    })
+                diesel::insert_into(users_db::table)
+                    .values((
+                        users_db::username.eq(username),
+                        users_db::password.eq(password),
+                        users_db::is_admin.eq(true),
+                        users_db::duel_points.eq(0),
+                    ))
                     .execute(&*db)
                     .unwrap();
                 json!({
@@ -110,13 +110,13 @@ pub fn add(db: Database, state_admin_key: State<AdminKey>, request: Json<AddRequ
                 })
             }
         } else {
-            diesel::insert_into(users::table)
-                .values(&User {
-                    username,
-                    password,
-                    is_admin: false,
-                    duel_points: 0,
-                })
+            diesel::insert_into(users_db::table)
+                .values((
+                    users_db::username.eq(username),
+                    users_db::password.eq(password),
+                    users_db::is_admin.eq(false),
+                    users_db::duel_points.eq(0),
+                ))
                 .execute(&*db)
                 .unwrap();
             json!({
@@ -140,8 +140,8 @@ pub struct DeleteRequest {
 #[post("/delete", data = "<request>")]
 pub fn delete(db: Database, request: Json<DeleteRequest>) -> JsonValue {
     if authenticate_user_succeeded(&request.username, &request.password, &db) {
-        diesel::delete(users::table)
-            .filter(users::username.eq(&request.username))
+        diesel::delete(users_db::table)
+            .filter(users_db::username.eq(&request.username))
             .execute(&*db)
             .unwrap();
         json!({
