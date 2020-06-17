@@ -1,2 +1,2 @@
 [global.databases]
-database = { url = "ygo_server.sqlite3" }
+database = { url = "postgres://postgres:YXFdRLyE5uV5uXVy@localhost/ygo_server" }
