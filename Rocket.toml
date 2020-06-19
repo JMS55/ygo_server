@@ -1,2 +1,0 @@
-[global.databases]
-database = { url = "postgres://postgres:YXFdRLyE5uV5uXVy@localhost/ygo_server" }
