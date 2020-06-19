@@ -1,4 +1,4 @@
-FROM postgres:12
+FROM postgres:12.3
 
 ENV POSTGRES_PASSWORD YXFdRLyE5uV5uXVy
 ENV POSTGRES_DB ygo_server

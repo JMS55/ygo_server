@@ -1,6 +1,4 @@
-use crate::database::{
-    matches as matches_db, tournaments as tournaments_db, users as users_db, Tournament,
-};
+use crate::database::{matches, tournaments, users, Match, Tournament};
 use crate::{AdminKey, Database};
 use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
 use rand::seq::SliceRandom;
@@ -13,7 +11,7 @@ use serde::Deserialize;
 #[get("/list")]
 pub fn list(db: Database) -> JsonValue {
     // TODO: Mark tournaments as complete or not
-    let tournaments = tournaments_db::table.load::<Tournament>(&*db).unwrap();
+    let tournaments = tournaments::table.load::<Tournament>(&*db).unwrap();
     let tournament_list = tournaments
         .into_iter()
         .map(|tournament| {
@@ -48,39 +46,35 @@ pub fn start(
     request: Json<StartRequest>,
 ) -> JsonValue {
     if request.admin_key == state_admin_key.0 {
-        let tournament_already_exists = !tournaments_db::table
-            .filter(tournaments_db::name.eq(&request.name))
-            .load::<Tournament>(&*db)
-            .unwrap()
-            .is_empty();
+        let tournament_already_exists = tournaments::table
+            .filter(tournaments::name.eq(&request.name))
+            .first::<Tournament>(&*db)
+            .is_ok();
         if !tournament_already_exists {
-            let mut users = users_db::table
-                .select(users_db::id)
-                .load::<i32>(&*db)
-                .unwrap();
+            let mut users = users::table.select(users::id).load::<i32>(&*db).unwrap();
             if users.len() > 1 {
-                let rounds = (users.len() as i32 - 1).min(8);
-                let tournament = diesel::insert_into(tournaments_db::table)
+                let rounds = (users.len() as i32 - 1).min(6);
+                let tournament = diesel::insert_into(tournaments::table)
                     .values((
-                        tournaments_db::name.eq(&request.name),
-                        tournaments_db::rounds.eq(rounds),
-                        tournaments_db::duel_points_per_win.eq(request.duel_points_per_win),
-                        tournaments_db::duel_points_per_loss.eq(request.duel_points_per_loss),
-                        tournaments_db::duel_points_jackpot.eq(request.duel_points_jackpot),
+                        tournaments::name.eq(&request.name),
+                        tournaments::rounds.eq(rounds),
+                        tournaments::duel_points_per_win.eq(request.duel_points_per_win),
+                        tournaments::duel_points_per_loss.eq(request.duel_points_per_loss),
+                        tournaments::duel_points_jackpot.eq(request.duel_points_jackpot),
                     ))
                     .get_result::<Tournament>(&*db)
                     .unwrap();
                 users.shuffle(&mut thread_rng());
                 for round in 1..=rounds {
                     for pair in users.chunks(2) {
-                        diesel::insert_into(matches_db::table)
+                        diesel::insert_into(matches::table)
                             .values((
-                                matches_db::tournament.eq(tournament.id),
-                                matches_db::round.eq(round),
-                                matches_db::duelist1.eq(pair.get(0)),
-                                matches_db::duelist2.eq(pair.get(1)),
-                                matches_db::duelist1_reported_winning.eq(Option::<bool>::None),
-                                matches_db::duelist2_reported_winning.eq(Option::<bool>::None),
+                                matches::tournament.eq(tournament.id),
+                                matches::round.eq(round),
+                                matches::duelist1.eq(pair.get(0)),
+                                matches::duelist2.eq(pair.get(1)),
+                                matches::duelist1_reported_winning.eq(Option::<bool>::None),
+                                matches::duelist2_reported_winning.eq(Option::<bool>::None),
                             ))
                             .execute(&*db)
                             .unwrap();
@@ -106,6 +100,72 @@ pub fn start(
         json!({
             "r.type": "error",
             "info": "Invalid admin key.",
+        })
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ReportMatchRequest {
+    match_id: i32,
+    won: bool,
+    username: String,
+    password: String,
+}
+
+#[post("/report_match", data = "<request>")]
+pub fn report_match(db: Database, request: Json<ReportMatchRequest>) -> JsonValue {
+    if let Ok(user) = db.authenticate_user_succeeded(&request.username, &request.password) {
+        let _match = matches::table
+            .filter(matches::id.eq(request.match_id))
+            .first::<Match>(&*db);
+        if let Ok(_match) = _match {
+            // TODO: Update duel points when both users agree on the outcome
+            if Some(user.id) == _match.duelist1 {
+                if _match.duelist1_reported_winning.is_none() {
+                    diesel::update(matches::table)
+                        .set(matches::duelist1_reported_winning.eq(Some(request.won)))
+                        .execute(&*db)
+                        .unwrap();
+                    json!({
+                        "r.type": "response",
+                    })
+                } else {
+                    json!({
+                        "r.type": "error",
+                        "info": "You may not resubmit a match result",
+                    })
+                }
+            } else if Some(user.id) == _match.duelist2 {
+                if _match.duelist2_reported_winning.is_none() {
+                    diesel::update(matches::table)
+                        .set(matches::duelist2_reported_winning.eq(Some(request.won)))
+                        .execute(&*db)
+                        .unwrap();
+                    json!({
+                        "r.type": "response",
+                    })
+                } else {
+                    json!({
+                        "r.type": "error",
+                        "info": "You may not resubmit a match result",
+                    })
+                }
+            } else {
+                json!({
+                    "r.type": "error",
+                    "info": "User not in match",
+                })
+            }
+        } else {
+            json!({
+                "r.type": "error",
+                "info": "Invalid match id.",
+            })
+        }
+    } else {
+        json!({
+            "r.type": "error",
+            "info": "Invalid username/password.",
         })
     }
 }

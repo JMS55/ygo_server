@@ -10,29 +10,29 @@ table! {
         id -> Integer,
         username -> Text,
         password -> Text,
-        is_admin -> Bool,
         duel_points -> Integer,
     }
 }
 
-#[derive(Queryable)]
+#[derive(Queryable, Clone)]
 pub struct User {
     pub id: i32,
     pub username: String,
     pub password: String,
-    pub is_admin: bool,
     pub duel_points: i32,
 }
 
 impl Database {
-    pub fn authenticate_user_succeeded(&self, username: &str, password: &str) -> bool {
+    pub fn authenticate_user_succeeded(&self, username: &str, password: &str) -> Result<User, ()> {
         let users = users::table
             .filter(users::username.eq(&username))
             .load::<User>(&**self)
             .unwrap();
         users
             .iter()
-            .any(|user| scrypt_check(password, &user.password).is_ok())
+            .find(|user| scrypt_check(password, &user.password).is_ok())
+            .cloned()
+            .ok_or(())
     }
 }
 
@@ -69,6 +69,7 @@ table! {
     }
 }
 
+#[derive(Queryable)]
 pub struct Match {
     pub id: i32,
     pub tournament: i32,

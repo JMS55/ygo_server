@@ -20,10 +20,14 @@ fn main() {
         rocket::ignite()
             .attach(Database::fairing())
             .manage(AdminKey(admin_key))
-            .mount("/users", routes![users::list, users::view, users::add])
+            .mount("/users", routes![users::list, users::profile, users::add])
             .mount(
                 "/tournaments",
-                routes![tournaments::list, tournaments::start],
+                routes![
+                    tournaments::list,
+                    tournaments::start,
+                    tournaments::report_match
+                ],
             )
             .launch();
     } else {
